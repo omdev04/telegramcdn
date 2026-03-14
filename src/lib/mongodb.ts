@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
+import { getRuntimeEnv } from '@/lib/runtime-env';
 
 function getMongoUri() {
-    const globalEnv = (globalThis as any)?.env;
-    return process.env.MONGODB_URI || globalEnv?.MONGODB_URI || (globalThis as any)?.MONGODB_URI;
+    return getRuntimeEnv('MONGODB_URI');
 }
 
 /**

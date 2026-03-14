@@ -4,18 +4,16 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyTelegramWebAppData } from "@/lib/telegram/auth";
+import { getRuntimeEnv, mergeRuntimeEnv } from "@/lib/runtime-env";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
 export function setRuntimeEnv(env?: RuntimeEnv) {
-    if (!env) return;
-    const globalEnv = ((globalThis as any).env ??= {});
-    Object.assign(globalEnv, env);
+    mergeRuntimeEnv(env);
 }
 
 function getEnv(name: string): string | undefined {
-    const globalEnv = (globalThis as any)?.env;
-    return process.env[name] || globalEnv?.[name] || (globalThis as any)?.[name];
+    return getRuntimeEnv(name);
 }
 
 function buildProviders() {
