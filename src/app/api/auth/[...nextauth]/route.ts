@@ -3,6 +3,7 @@ import { createAuthOptions, setRuntimeEnv } from "@/lib/auth";
 
 type WorkerBindings = Record<string, string | undefined>;
 type WorkerContext = {
+	params: Promise<any>;
 	env?: WorkerBindings;
 };
 
@@ -46,7 +47,7 @@ function prepareAuthRuntimeConfig(request: Request, context: WorkerContext) {
 async function handler(request: Request, context: WorkerContext) {
 	prepareAuthRuntimeConfig(request, context);
 	const nextAuthHandler = NextAuth(createAuthOptions());
-	return nextAuthHandler(request, context);
+	return nextAuthHandler(request, context) as Promise<Response>;
 }
 
 export { handler as GET, handler as POST };
