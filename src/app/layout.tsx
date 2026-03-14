@@ -34,13 +34,16 @@ export default async function RootLayout({
     // Check Maintenance Mode
     let maintenanceMode = false;
     let isAdmin = false;
+    const hasMongoUri = Boolean(process.env.MONGODB_URI);
 
-    try {
-        await dbConnect();
-        const setting = await Setting.findOne({ key: 'maintenanceMode' });
-        maintenanceMode = setting?.value === true;
-    } catch (error) {
-        console.error("Failed to check maintenance mode:", error);
+    if (hasMongoUri) {
+        try {
+            await dbConnect();
+            const setting = await Setting.findOne({ key: 'maintenanceMode' });
+            maintenanceMode = setting?.value === true;
+        } catch (error) {
+            console.error("Failed to check maintenance mode:", error);
+        }
     }
 
     if (maintenanceMode) {
