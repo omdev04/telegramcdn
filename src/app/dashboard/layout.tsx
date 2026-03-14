@@ -12,12 +12,16 @@ export default async function DashboardLayout({
 }) {
     // Check maintenance mode server-side
     let maintenanceMode = false;
-    try {
-        await dbConnect();
-        const setting = await Setting.findOne({ key: 'maintenanceMode' });
-        maintenanceMode = setting?.value === true;
-    } catch (error) {
-        console.error('Failed to check maintenance mode in dashboard:', error);
+    const hasMongoUri = Boolean(process.env.MONGODB_URI);
+
+    if (hasMongoUri) {
+        try {
+            await dbConnect();
+            const setting = await Setting.findOne({ key: 'maintenanceMode' });
+            maintenanceMode = setting?.value === true;
+        } catch (error) {
+            console.error('Failed to check maintenance mode in dashboard:', error);
+        }
     }
 
     if (maintenanceMode) {
