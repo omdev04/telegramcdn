@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+function getMongoUri() {
+    const globalEnv = (globalThis as any)?.env;
+    return process.env.MONGODB_URI || globalEnv?.MONGODB_URI || (globalThis as any)?.MONGODB_URI;
+}
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -23,7 +26,9 @@ if (!cached) {
 }
 
 async function dbConnect() {
-    if (!MONGODB_URI) {
+    const mongoUri = getMongoUri();
+
+    if (!mongoUri) {
         throw new Error('MONGODB_URI is not configured');
     }
 
@@ -40,7 +45,7 @@ async function dbConnect() {
             bufferCommands: false,
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+        cached.promise = mongoose.connect(mongoUri, opts).then((mongoose) => {
             return mongoose;
         });
     }
