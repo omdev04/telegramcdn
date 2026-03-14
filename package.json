@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "next build --webpack && opennextjs-cloudflare build --skipNextBuild",
+    "build:next": "next build --webpack",
     "start": "next start",
-    "build:worker": "opennextjs-cloudflare build",
-    "preview:worker": "opennextjs-cloudflare build && wrangler dev",
-    "deploy:worker": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "build:worker": "next build --webpack && opennextjs-cloudflare build --skipNextBuild",
+    "preview:worker": "next build --webpack && opennextjs-cloudflare build --skipNextBuild && wrangler dev",
+    "deploy:worker": "next build --webpack && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare deploy",
     "lint": "eslint",
     "make-admin": "tsx src/scripts/make-admin.ts"
   },
