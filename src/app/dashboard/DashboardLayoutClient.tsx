@@ -6,6 +6,7 @@ import { PLANS } from '@/config/plans';
 import { Menu } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { redirect } from 'next/navigation';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { DashboardProvider } from '@/contexts/DashboardContext';
 
@@ -23,6 +24,8 @@ export default function DashboardLayoutClient({
     const [usage, setUsage] = useState({ storageUsed: 0, totalImages: 0, maxImages: 100 });
 
     useEffect(() => {
+        if (status === 'unauthenticated') redirect('/login');
+
         if (session?.user) {
             fetch('/api/profile')
                 .then(res => res.json())

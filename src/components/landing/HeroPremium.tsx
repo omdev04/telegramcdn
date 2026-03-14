@@ -103,7 +103,7 @@ export const HeroPremium = () => {
                     transition={{ duration: 0.5, delay: 0.3 }}
                     className="flex flex-col sm:flex-row items-center gap-3 mb-14"
                 >
-                    <Link href="/dashboard">
+                    <Link href="/login">
                         <button className="group inline-flex items-center gap-2 h-12 px-7 rounded-full bg-[#1da1f2] hover:bg-[#1a91da] text-white font-semibold text-sm transition-all duration-200 hover:scale-[1.03] shadow-[0_0_28px_-4px_rgba(29,161,242,0.6)]">
                             Get Started Free
                             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />

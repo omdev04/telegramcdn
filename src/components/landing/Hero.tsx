@@ -27,7 +27,7 @@ export const Hero = () => {
                         The modern infrastructure for your next big project.
                     </p>
                     <div className="flex items-center justify-center gap-x-6">
-                        <Link href="/dashboard">
+                        <Link href="/login">
                             <Button size="lg" className="rounded-full px-8 text-base bg-gradient-to-r from-[#1da1f2] to-[#1c9cf0] hover:shadow-[0_0_30px_rgba(29,161,242,0.5)] border border-[#1da1f2]/50">
                                 Get Started
                             </Button>

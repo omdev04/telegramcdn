@@ -19,7 +19,7 @@ export const CTA = () => {
                         Join 10,000+ developers using Imagnest to host and serve millions of images every day.
                     </p>
                     <div className="mt-10 flex items-center justify-center gap-x-6 relative z-10">
-                        <Link href="/dashboard">
+                        <Link href="/login">
                             <Button size="lg" className="bg-white text-black hover:bg-gray-200 font-semibold px-8">
                                 Get started for free
                             </Button>
