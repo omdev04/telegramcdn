@@ -5,76 +5,85 @@ import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyTelegramWebAppData } from "@/lib/telegram/auth";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+const providers = [
+    ...(googleClientId && googleClientSecret
+        ? [
+            GoogleProvider({
+                clientId: googleClientId,
+                clientSecret: googleClientSecret,
+            }),
+        ]
+        : []),
+    CredentialsProvider({
+        id: "telegram-login",
+        name: "Telegram",
+        credentials: {
+            id: { label: "ID", type: "text" },
+            first_name: { label: "First Name", type: "text" },
+            last_name: { label: "Last Name", type: "text" },
+            username: { label: "Username", type: "text" },
+            photo_url: { label: "Photo URL", type: "text" },
+            auth_date: { label: "Auth Date", type: "text" },
+            hash: { label: "Hash", type: "text" },
+        },
+        async authorize(credentials) {
+            if (!credentials) return null;
+
+            // Verify Telegram data
+            const isValid = verifyTelegramWebAppData(credentials as any, process.env.TELEGRAM_BOT_TOKEN || "");
+
+            if (!isValid) {
+                throw new Error("Invalid Telegram hash");
+            }
+
+            // Check for staleness (optional, e.g. 24 hours)
+            const now = Math.floor(Date.now() / 1000);
+            if (now - parseInt(credentials.auth_date) > 86400) {
+                throw new Error("Data is outdated");
+            }
+
+            await dbConnect();
+
+            // Find or create user
+            let user = await User.findOne({ telegramId: credentials.id });
+            if (!user) {
+                // CHECK SIGNUP SETTING
+                const { default: Setting } = await import("@/models/Setting");
+                const signupSetting = await Setting.findOne({ key: 'signupsEnabled' });
+
+                if (signupSetting && signupSetting.value === false) {
+                    throw new Error("Signups are currently disabled.");
+                }
+
+                user = await User.create({
+                    telegramId: credentials.id,
+                    username: credentials.username || `user_${credentials.id}`,
+                    // We might not get email from Telegram
+                    avatar: credentials.photo_url,
+                    plan: 'free',
+                });
+            } else {
+                user.lastLogin = new Date();
+                await user.save();
+            }
+
+            return {
+                id: user._id.toString(),
+                name: user.username,
+                image: user.avatar,
+                email: user.email, // might be undefined
+                role: user.role,
+                plan: user.plan
+            };
+        },
+    }),
+];
+
 export const authOptions: NextAuthOptions = {
-    providers: [
-        GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID || "",
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-        }),
-        CredentialsProvider({
-            id: "telegram-login",
-            name: "Telegram",
-            credentials: {
-                id: { label: "ID", type: "text" },
-                first_name: { label: "First Name", type: "text" },
-                last_name: { label: "Last Name", type: "text" },
-                username: { label: "Username", type: "text" },
-                photo_url: { label: "Photo URL", type: "text" },
-                auth_date: { label: "Auth Date", type: "text" },
-                hash: { label: "Hash", type: "text" },
-            },
-            async authorize(credentials) {
-                if (!credentials) return null;
-
-                // Verify Telegram data
-                const isValid = verifyTelegramWebAppData(credentials as any, process.env.TELEGRAM_BOT_TOKEN || "");
-
-                if (!isValid) {
-                    throw new Error("Invalid Telegram hash");
-                }
-
-                // Check for staleness (optional, e.g. 24 hours)
-                const now = Math.floor(Date.now() / 1000);
-                if (now - parseInt(credentials.auth_date) > 86400) {
-                    throw new Error("Data is outdated");
-                }
-
-                await dbConnect();
-
-                // Find or create user
-                let user = await User.findOne({ telegramId: credentials.id });
-                if (!user) {
-                    // CHECK SIGNUP SETTING
-                    const { default: Setting } = await import("@/models/Setting");
-                    const signupSetting = await Setting.findOne({ key: 'signupsEnabled' });
-
-                    if (signupSetting && signupSetting.value === false) {
-                        throw new Error("Signups are currently disabled.");
-                    }
-
-                    user = await User.create({
-                        telegramId: credentials.id,
-                        username: credentials.username || `user_${credentials.id}`,
-                        // We might not get email from Telegram
-                        avatar: credentials.photo_url,
-                        plan: 'free',
-                    });
-                } else {
-                    user.lastLogin = new Date();
-                    await user.save();
-                }
-
-                return {
-                    id: user._id.toString(),
-                    name: user.username,
-                    image: user.avatar,
-                    email: user.email, // might be undefined
-                    role: user.role,
-                    plan: user.plan
-                };
-            },
-        }),
-    ],
+    providers,
     callbacks: {
         async signIn({ user, account, profile }) {
             if (account?.provider === "google") {
@@ -160,5 +169,5 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: "jwt",
     },
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
 };
