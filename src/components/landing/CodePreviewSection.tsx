@@ -15,15 +15,15 @@ export const CodePreviewSection = () => {
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1da1f2] to-[#00b8d4]">First.</span>
                         </h2>
                         <p className="text-[#72767a] text-lg mb-8 leading-relaxed">
-                            Integrate in minutes directly from your frontend or backend. We provide a simple REST API and typed SDKs for full control.
+                            Integrate in minutes from your frontend or backend. Use our simple REST API to upload, manage, and retrieve images securely.
                         </p>
 
                         <div className="space-y-4">
                             {[
-                                'Type-safe SDKs',
-                                'Automatic Optimization',
-                                'Signed URLs for Privacy',
-                                'Zero-config CDN'
+                                'Simple REST API endpoints',
+                                'Multipart uploads',
+                                'x-api-key authentication',
+                                'Private and secure by default',
                             ].map(item => (
                                 <div key={item} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -48,15 +48,16 @@ export const CodePreviewSection = () => {
                             <div className="p-6 bg-[#000000] overflow-x-auto">
                                 <pre className="font-mono text-sm leading-relaxed">
                                     <code className="text-[#e7e9ea]">
-                                        <span className="text-[#1da1f2]">import</span> {'{ Imagnest }'} <span className="text-[#1da1f2]">from</span> <span className="text-green-400">'@imagnest/sdk'</span>;<br /><br />
-                                        <span className="text-[#1da1f2]">const</span> client = <span className="text-[#1da1f2]">new</span> Imagnest(process.env.API_KEY);<br /><br />
-                                        <span className="text-[#72767a]">// Upload an image to Telegram storage</span><br />
-                                        <span className="text-[#1da1f2]">const</span> {'{ url }'} = <span className="text-[#1da1f2]">await</span> client.upload(<span className="text-yellow-300">file</span>, {'{'}<br />
-                                        {'  '}privacy: <span className="text-green-400">'private'</span>,<br />
-                                        {'  '}tags: [<span className="text-green-400">'user-avatar'</span>]<br />
+                                        <span className="text-[#1da1f2]">const</span> formData = <span className="text-[#1da1f2]">new</span> FormData();<br />
+                                        formData.append(<span className="text-yellow-300">'file'</span>, fileInput.files[0]);<br /><br />
+                                        <span className="text-[#1da1f2]">const</span> res = <span className="text-[#1da1f2]">await</span> fetch(<span className="text-green-400">'https://your-domain.com/api/upload'</span>, {'{'}<br />
+                                        {'  '}method: <span className="text-green-400">'POST'</span>,<br />
+                                        {'  '}headers: {'{'} <span className="text-cyan-400">'x-api-key'</span>: <span className="text-yellow-300">'YOUR_API_KEY'</span> {'}'},<br />
+                                        {'  '}body: formData<br />
                                         {'}'});<br /><br />
-                                        <span className="text-blue-400">console</span>.log(url);<br />
-                                        <span className="text-[#72767a] opacity-50">// Output: https://cdn.imagnest.com/img_123...</span>
+                                        <span className="text-[#1da1f2]">const</span> data = <span className="text-[#1da1f2]">await</span> res.json();<br />
+                                        <span className="text-blue-400">console</span>.log(data.url);<br />
+                                        <span className="text-[#72767a] opacity-50">{'{ "success": true, "url": "https://your-domain.com/cdn/abc123" }'}</span>
                                     </code>
                                 </pre>
                             </div>

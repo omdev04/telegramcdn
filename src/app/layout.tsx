@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Outfit } from 'next/font/google';
 import '@/app/globals.css';
 import { cn } from '@/lib/utils';
@@ -18,11 +18,12 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 export const metadata: Metadata = {
     title: 'Imagnest - Fastest Image CDN',
     description: 'Secure image hosting powered by Telegram, cached globally for lightning-fast delivery.',
-    viewport: {
-        width: 'device-width',
-        initialScale: 1,
-        maximumScale: 5,
-    },
+};
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
 };
 
 export default async function RootLayout({

@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/Button';
-import { User, Mail, Shield, Trash2, Bell, Key } from 'lucide-react';
+import { User, Mail, Shield, Trash2, Key } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -199,42 +199,11 @@ export default function SettingsPage() {
                 </div>
             </motion.div>
 
-            {/* Notifications & Security */}
-            <div className="grid gap-8 md:grid-cols-2">
-                <motion.div
+            {/* Security */}
+            <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.1 }}
-                    className="bg-card backdrop-blur-xl p-8 rounded-3xl border border-border space-y-6 shadow-sm hover:shadow-[0_0_25px_rgba(29,161,242,0.1)] transition-all duration-500"
-                >
-                    <h2 className="text-xl font-semibold text-white font-display flex items-center gap-2">
-                        <Bell className="h-5 w-5 text-[#1da1f2]" />
-                        Notifications
-                    </h2>
-
-                    <div className="space-y-4">
-                        {[
-                            { label: 'Email Alerts', desc: 'Receive updates about your account usage', active: true },
-                            { label: 'Security Alerts', desc: 'Notify on suspicious login attempts', active: true },
-                            { label: 'Marketing', desc: 'Product updates and offers', active: false },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-                                <div>
-                                    <p className="text-sm font-medium text-white">{item.label}</p>
-                                    <p className="text-xs text-muted-foreground">{item.desc}</p>
-                                </div>
-                                <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${item.active ? 'bg-[#1da1f2]/20' : 'bg-black/40'}`}>
-                                    <div className={`w-4 h-4 rounded-full bg-current transition-transform ${item.active ? 'translate-x-4 text-[#1da1f2]' : 'text-muted-foreground'}`} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.2 }}
                     className="bg-card backdrop-blur-xl p-8 rounded-3xl border border-border space-y-6 shadow-sm hover:shadow-[0_0_25px_rgba(29,161,242,0.1)] transition-all duration-500"
                 >
                     <h2 className="text-xl font-semibold text-white font-display flex items-center gap-2">
@@ -266,7 +235,6 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </motion.div>
-            </div>
 
             {/* Danger Zone */}
             <motion.div

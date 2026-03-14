@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Image from "@/models/Image";
 import { getTelegramFileLink, getFileLinkFromBot } from "@/lib/telegram/bot";
-import { existsInCache, getReadStream, writeToCache } from "@/lib/cache/disk";
-import sharp from "sharp";
-import axios from "axios";
+import { getCachedImageResponse, putCachedImageResponse } from "@/lib/cache/image-cache";
+import { fetchTelegramImage } from "@/lib/images/delivery";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -60,16 +59,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
 
         // 3. Cache Check
-        if (existsInCache(id, size)) {
+        const cachedResponse = await getCachedImageResponse(req, id, size);
+        if (cachedResponse) {
             console.log(`[CDN] Cache HIT for ${id}`);
-            const stream = getReadStream(id, size);
-            const headers = new Headers();
-            headers.set("Content-Type", image.mimeType);
+            const headers = new Headers(cachedResponse.headers);
+            headers.set("Content-Type", headers.get("Content-Type") || image.mimeType);
             headers.set("Cache-Control", "public, max-age=31536000, immutable");
             headers.set("X-Cache", "HIT");
 
-            // @ts-ignore
-            return new NextResponse(stream, { headers });
+            return new NextResponse(cachedResponse.body, {
+                headers,
+                status: cachedResponse.status,
+            });
         }
 
         console.log(`[CDN] Cache MISS, fetching from Telegram...`);
@@ -94,38 +95,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         console.log(`[CDN] Got file link from Telegram, downloading...`);
 
-        const response = await axios.get(fileLink, { responseType: 'arraybuffer' });
-        console.log(`[CDN] Downloaded ${response.data.byteLength} bytes from Telegram`);
+        const upstreamResponse = await fetchTelegramImage(
+            fileLink,
+            size,
+            req.headers.get("accept"),
+        );
 
-        const buffer = Buffer.from(response.data);
-
-        let outputBuffer = buffer;
-
-        // 5. Processing (Resize)
-        if (size === 'small' || size === 'medium') {
-            const width = size === 'small' ? 400 : 800;
-            console.log(`[CDN] Resizing image to width: ${width}`);
-            outputBuffer = await sharp(buffer)
-                .resize(width)
-                .toBuffer();
-            console.log(`[CDN] Resized to ${outputBuffer.byteLength} bytes`);
+        if (!upstreamResponse.ok) {
+            console.log(`[CDN] Telegram upstream returned ${upstreamResponse.status}`);
+            return new NextResponse("Upstream Error", { status: 502 });
         }
 
-        // 6. Write to Cache
-        console.log(`[CDN] Writing to cache...`);
-        await writeToCache(id, outputBuffer, size);
-        console.log(`[CDN] Cache write complete`);
+        const outputBuffer = await upstreamResponse.arrayBuffer();
+        console.log(`[CDN] Downloaded ${outputBuffer.byteLength} bytes from Telegram`);
 
         // 7. Serve
         const headers = new Headers();
-        // If resized, mime might change? usually sharp keeps format or defaults jpeg/png. 
-        // We assume same mime for now or detect.
-        headers.set("Content-Type", image.mimeType);
+        headers.set("Content-Type", upstreamResponse.headers.get("content-type") || image.mimeType);
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
         headers.set("X-Cache", "MISS");
 
+        const response = new NextResponse(outputBuffer, { headers });
+        await putCachedImageResponse(req, id, size, response);
+
         console.log(`[CDN] Serving image, size: ${outputBuffer.byteLength} bytes`);
-        return new NextResponse(outputBuffer, { headers });
+        return response;
 
     } catch (error) {
         console.error("[CDN] Error:", error);

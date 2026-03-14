@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Image from "@/models/Image";
 import { getTelegramFileLink } from "@/lib/telegram/bot";
-import { existsInCache, getReadStream, writeToCache } from "@/lib/cache/disk";
-import sharp from "sharp";
-import axios from "axios";
+import { getCachedImageResponse, putCachedImageResponse } from "@/lib/cache/image-cache";
+import { fetchTelegramImage } from "@/lib/images/delivery";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -36,16 +35,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         Image.findByIdAndUpdate(id, { $inc: { views: 1 } }).catch(() => { });
 
         // 4. Cache Check
-        if (existsInCache(id, size)) {
-            const stream = getReadStream(id, size);
-            const headers = new Headers();
-            headers.set("Content-Type", image.mimeType);
+        const cachedResponse = await getCachedImageResponse(req, id, size);
+        if (cachedResponse) {
+            const headers = new Headers(cachedResponse.headers);
+            headers.set("Content-Type", headers.get("Content-Type") || image.mimeType);
             headers.set("Cache-Control", "public, max-age=31536000, immutable");
             headers.set("X-Cache", "HIT");
             headers.set("X-Report-Abuse", `${req.nextUrl.origin}/report/${id}`);
 
-            // @ts-ignore
-            return new NextResponse(stream, { headers });
+            return new NextResponse(cachedResponse.body, {
+                headers,
+                status: cachedResponse.status,
+            });
         }
 
         // 5. Fetch from Telegram
@@ -54,30 +55,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             return new NextResponse("Upstream Error", { status: 502 });
         }
 
-        const response = await axios.get(fileLink, { responseType: 'arraybuffer' });
-        const buffer = Buffer.from(response.data);
+        const upstreamResponse = await fetchTelegramImage(
+            fileLink,
+            size,
+            req.headers.get("accept"),
+        );
 
-        let outputBuffer = buffer;
-
-        // 6. Processing (Resize)
-        if (size === 'small' || size === 'medium') {
-            const width = size === 'small' ? 400 : 800;
-            outputBuffer = await sharp(buffer)
-                .resize(width)
-                .toBuffer();
+        if (!upstreamResponse.ok) {
+            return new NextResponse("Upstream Error", { status: 502 });
         }
 
-        // 7. Write to Cache
-        await writeToCache(id, outputBuffer, size);
+        const outputBuffer = await upstreamResponse.arrayBuffer();
 
         // 8. Serve
         const headers = new Headers();
-        headers.set("Content-Type", image.mimeType);
+        headers.set("Content-Type", upstreamResponse.headers.get("content-type") || image.mimeType);
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
         headers.set("X-Cache", "MISS");
         headers.set("X-Report-Abuse", `${req.nextUrl.origin}/report/${id}`);
 
-        return new NextResponse(outputBuffer, { headers });
+        const response = new NextResponse(outputBuffer, { headers });
+        await putCachedImageResponse(req, id, size, response);
+
+        return response;
 
     } catch (error) {
         console.error("CDN Error:", error);

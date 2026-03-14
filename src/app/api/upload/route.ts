@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
             success: true,
             image: {
                 id: newImage._id,
-                url: `/i/${newImage._id}`,
+                url: `${req.nextUrl.origin}/api/cdn/${newImage._id}`,
                 name: newImage.originalName,
                 size: newImage.size,
                 privacy: newImage.privacy

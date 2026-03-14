@@ -171,10 +171,11 @@ export default function ImagesPage() {
     const handleCopyLink = async (img: any, e: React.MouseEvent, type: 'report' | 'direct' = 'report') => {
         e.stopPropagation();
         try {
-            // Construct full URL with domain
-            // Report link is /report/ID, Direct link is /i/ID (img.url)
-            const path = type === 'report' ? `/report/${img.id}` : img.url;
-            const fullUrl = `${window.location.origin}${path}`;
+            // Report link: relative path → prepend origin
+            // Direct link: img.url is already absolute, use as-is
+            const fullUrl = type === 'report'
+                ? `${window.location.origin}/report/${img.id}`
+                : img.url;
             await navigator.clipboard.writeText(fullUrl);
             showToast(`${type === 'report' ? 'Report' : 'Direct'} link copied!`, 'success');
         } catch (error) {

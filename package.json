@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview:worker": "opennextjs-cloudflare build && wrangler dev",
+    "deploy:worker": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "lint": "eslint",
     "make-admin": "tsx src/scripts/make-admin.ts"
   },
@@ -20,12 +23,14 @@
     "framer-motion": "^12.23.26",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
-    "mongoose": "^9.0.2",
-    "next": "16.1.1",
+    "mongodb": "^7.1.0",
+    "mongoose": "^9.2.1",
+    "next": "16.1.6",
     "next-auth": "^4.24.13",
     "node-telegram-bot-api": "^0.67.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.7.0",
     "sharp": "^0.34.5",
     "tailwind-merge": "^3.4.0",
     "three": "^0.182.0"
@@ -41,9 +46,11 @@
     "@types/react-dom": "^19",
     "dotenv": "^17.2.3",
     "eslint": "^9",
-    "eslint-config-next": "16.1.1",
+    "eslint-config-next": "16.1.6",
+    "@opennextjs/cloudflare": "^1.6.3",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.9.1"
   }
 }

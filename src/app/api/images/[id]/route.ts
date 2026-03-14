@@ -6,6 +6,12 @@ import Image from "@/models/Image";
 import User from "@/models/User";
 import { deleteMessage } from "@/lib/telegram/bot";
 
+/** MongoDB ObjectId must be a 24-character hex string */
+const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
+function isValidObjectId(id: string): boolean {
+    return OBJECT_ID_REGEX.test(id);
+}
+
 export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -30,6 +36,10 @@ export async function DELETE(
 
         await dbConnect();
         const { id } = await params;
+
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: "Invalid image ID" }, { status: 400 });
+        }
 
         // Find the image
         const image = await Image.findById(id);
@@ -75,7 +85,8 @@ export async function DELETE(
         });
 
     } catch (error) {
-        console.error("Delete Image API Error:", error);
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Delete Image API Error:", message);
         return NextResponse.json({ error: "Failed to delete image" }, { status: 500 });
     }
 }
@@ -105,6 +116,10 @@ export async function GET(
         await dbConnect();
         const { id } = await params;
 
+        if (!isValidObjectId(id)) {
+            return NextResponse.json({ error: "Invalid image ID" }, { status: 400 });
+        }
+
         // Find the image
         const image = await Image.findById(id);
         if (!image) {
@@ -116,21 +131,29 @@ export async function GET(
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
+        const baseUrl = req.nextUrl.origin;
+        const cdnUrl = `${baseUrl}/api/cdn/${image._id}`;
+
         return NextResponse.json({
             success: true,
             image: {
                 _id: image._id,
                 filename: image.originalName,
                 size: image.size,
-                url: `${req.nextUrl.origin}/cdn/${image._id}`,
-                views: image.accessCount,
+                url: cdnUrl,
+                // directUrl: cdnUrl,
+                views: image.views ?? image.accessCount ?? 0,
                 createdAt: image.createdAt,
-                privacy: image.privacy
+                privacy: image.privacy,
+                ...(image.privacy === 'private' && image.accessToken
+                    ? { tokenUrl: `${cdnUrl}?token=${image.accessToken}` }
+                    : {})
             }
         });
 
     } catch (error) {
-        console.error("Get Image API Error:", error);
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Get Image API Error:", message);
         return NextResponse.json({ error: "Failed to fetch image" }, { status: 500 });
     }
 }

@@ -37,8 +37,22 @@ export async function GET(req: NextRequest) {
         }
 
         const { searchParams } = req.nextUrl;
-        const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-        const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+
+        const rawPage = searchParams.get("page");
+        const rawLimit = searchParams.get("limit");
+
+        const parsedPage = rawPage !== null ? parseInt(rawPage, 10) : 1;
+        const parsedLimit = rawLimit !== null ? parseInt(rawLimit, 10) : 20;
+
+        if (!rawPage === false && (isNaN(parsedPage) || parsedPage < 1)) {
+            return NextResponse.json({ error: "Invalid 'page' parameter: must be a positive integer" }, { status: 400 });
+        }
+        if (!rawLimit === false && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100)) {
+            return NextResponse.json({ error: "Invalid 'limit' parameter: must be between 1 and 100" }, { status: 400 });
+        }
+
+        const page = isNaN(parsedPage) ? 1 : Math.max(1, parsedPage);
+        const limit = isNaN(parsedLimit) ? 20 : Math.min(100, Math.max(1, parsedLimit));
         const skip = (page - 1) * limit;
 
         await dbConnect();
@@ -51,19 +65,27 @@ export async function GET(req: NextRequest) {
 
         const total = await Image.countDocuments({ userId: auth.userId });
 
+        const baseUrl = req.nextUrl.origin;
+
         return NextResponse.json({
             success: true,
-            images: images.map(img => ({
-                id: img._id.toString(),
-                name: img.originalName,
-                filename: img.originalName, // Keep for backwards compatibility
-                size: img.size,
-                url: `/api/cdn/${img._id}`,
-                views: img.accessCount,
-                createdAt: img.createdAt,
-                privacy: img.privacy,
-                accessToken: img.accessToken
-            })),
+            images: images.map(img => {
+                const cdnUrl = `${baseUrl}/api/cdn/${img._id}`;
+                return {
+                    id: img._id.toString(),
+                    name: img.originalName,
+                    filename: img.originalName,
+                    size: img.size,
+                    url: cdnUrl,
+                    directUrl: cdnUrl,
+                    views: img.views ?? img.accessCount ?? 0,
+                    createdAt: img.createdAt,
+                    privacy: img.privacy,
+                    ...(img.privacy === 'private' && img.accessToken
+                        ? { tokenUrl: `${cdnUrl}?token=${img.accessToken}` }
+                        : {})
+                };
+            }),
             pagination: {
                 page,
                 limit,
@@ -73,7 +95,8 @@ export async function GET(req: NextRequest) {
         }, { headers });
 
     } catch (error) {
-        console.error("List Images Error:", error);
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("List Images Error:", message);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
