@@ -5,8 +5,13 @@ import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyTelegramWebAppData } from "@/lib/telegram/auth";
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+function getEnv(name: string): string | undefined {
+    const globalEnv = (globalThis as any)?.env;
+    return process.env[name] || globalEnv?.[name] || (globalThis as any)?.[name];
+}
+
+const googleClientId = getEnv("GOOGLE_CLIENT_ID");
+const googleClientSecret = getEnv("GOOGLE_CLIENT_SECRET");
 
 const providers = [
     ...(googleClientId && googleClientSecret
@@ -33,7 +38,10 @@ const providers = [
             if (!credentials) return null;
 
             // Verify Telegram data
-            const isValid = verifyTelegramWebAppData(credentials as any, process.env.TELEGRAM_BOT_TOKEN || "");
+            const isValid = verifyTelegramWebAppData(
+                credentials as any,
+                getEnv("TELEGRAM_BOT_TOKEN") || getEnv("TELEGRAM_BOT_TOKEN_2") || ""
+            );
 
             if (!isValid) {
                 throw new Error("Invalid Telegram hash");
@@ -169,5 +177,10 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: "jwt",
     },
-    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    secret:
+        getEnv("NEXTAUTH_SECRET") ||
+        getEnv("AUTH_SECRET") ||
+        getEnv("TELEGRAM_BOT_TOKEN") ||
+        getEnv("TELEGRAM_BOT_TOKEN_2") ||
+        "temporary-auth-secret-change-me",
 };

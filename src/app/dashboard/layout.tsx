@@ -19,7 +19,7 @@ export default async function DashboardLayout({
             await dbConnect();
             const setting = await Setting.findOne({ key: 'maintenanceMode' });
             maintenanceMode = setting?.value === true;
-        } catch (error) {
+        } catch (   error) {
             console.error('Failed to check maintenance mode in dashboard:', error);
         }
     }
