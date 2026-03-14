@@ -3,7 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/Button';
 import { TelegramLoginButton } from './TelegramLoginButton';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -15,6 +15,7 @@ import { useToast } from '@/contexts/ToastContext';
 export const LoginView = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [acceptedTos, setAcceptedTos] = useState(false);
+    const [googleEnabled, setGoogleEnabled] = useState(true);
     const { showToast } = useToast();
     const searchParams = useSearchParams();
     const error = searchParams.get('error');
@@ -22,11 +23,45 @@ export const LoginView = () => {
     // You can set this in env NEXT_PUBLIC_TELEGRAM_BOT_NAME
     const botName = process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'samplebot';
 
+    useEffect(() => {
+        let isMounted = true;
+
+        const checkProviders = async () => {
+            try {
+                const response = await fetch('/api/auth/providers');
+                if (!response.ok) return;
+
+                const providers = await response.json();
+                const hasGoogle = Boolean(providers?.google);
+
+                if (isMounted) {
+                    setGoogleEnabled(hasGoogle);
+                }
+            } catch {
+                if (isMounted) {
+                    setGoogleEnabled(false);
+                }
+            }
+        };
+
+        checkProviders();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
     const handleGoogleLogin = async () => {
         if (!acceptedTos) {
             showToast('Please accept Terms & Conditions and Privacy Policy to continue', 'error');
             return;
         }
+
+        if (!googleEnabled) {
+            showToast('Google login is not configured on this deployment yet.', 'error');
+            return;
+        }
+
         setIsLoading(true);
         await signIn('google', { callbackUrl: '/dashboard' });
     }; 
@@ -71,8 +106,8 @@ export const LoginView = () => {
                 <Button
                     onClick={handleGoogleLogin}
                     isLoading={isLoading}
-                    disabled={!acceptedTos || isLoading}
-                    title={!acceptedTos ? 'Accept Terms & Privacy to continue' : undefined}
+                    disabled={!acceptedTos || isLoading || !googleEnabled}
+                    title={!acceptedTos ? 'Accept Terms & Privacy to continue' : !googleEnabled ? 'Google provider is not configured on server' : undefined}
                     variant="secondary"
                     className="w-full h-12 bg-white text-black hover:bg-gray-100 font-semibold rounded-2xl text-[15px] transition-all hover:scale-[1.02] shadow-lg shadow-white/5"
                 >
@@ -84,6 +119,13 @@ export const LoginView = () => {
                     <div className="mt-2 text-sm text-red-300 flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
                         <span>Please accept the Terms & Conditions and Privacy Policy to enable sign-in.</span>
+                    </div>
+                )}
+
+                {!googleEnabled && (
+                    <div className="mt-2 text-sm text-amber-300 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Google sign-in is not configured on server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Cloudflare Worker secrets.</span>
                     </div>
                 )}
 
