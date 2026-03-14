@@ -1,16 +1,25 @@
 import NextAuth from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { createAuthOptions, setRuntimeEnv } from "@/lib/auth";
 
-function prepareAuthRuntimeConfig(request: Request) {
-	const globalEnv = ((globalThis as any).env ??= {});
+type WorkerBindings = Record<string, string | undefined>;
+type WorkerContext = {
+	env?: WorkerBindings;
+};
+
+function prepareAuthRuntimeConfig(request: Request, context: WorkerContext) {
+	setRuntimeEnv(context?.env);
+	const globalScope = globalThis as typeof globalThis & { env?: WorkerBindings };
+	const globalEnv = (globalScope.env ??= {});
 	const requestOrigin = new URL(request.url).origin;
-	const currentAuthUrl = process.env.NEXTAUTH_URL || globalEnv.NEXTAUTH_URL;
+	const currentAuthUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || globalEnv.NEXTAUTH_URL || globalEnv.AUTH_URL;
 
 	if (!currentAuthUrl || currentAuthUrl.includes("localhost")) {
 		try {
 			process.env.NEXTAUTH_URL = requestOrigin;
+			process.env.AUTH_URL = requestOrigin;
 		} catch {}
 		globalEnv.NEXTAUTH_URL = requestOrigin;
+		globalEnv.AUTH_URL = requestOrigin;
 	}
 
 	const currentSecret =
@@ -34,9 +43,9 @@ function prepareAuthRuntimeConfig(request: Request) {
 	}
 }
 
-async function handler(request: Request, context: any) {
-	prepareAuthRuntimeConfig(request);
-	const nextAuthHandler = NextAuth(authOptions);
+async function handler(request: Request, context: WorkerContext) {
+	prepareAuthRuntimeConfig(request, context);
+	const nextAuthHandler = NextAuth(createAuthOptions());
 	return nextAuthHandler(request, context);
 }
 

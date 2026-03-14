@@ -5,93 +5,114 @@ import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyTelegramWebAppData } from "@/lib/telegram/auth";
 
+type RuntimeEnv = Record<string, string | undefined>;
+
+export function setRuntimeEnv(env?: RuntimeEnv) {
+    if (!env) return;
+    const globalEnv = ((globalThis as any).env ??= {});
+    Object.assign(globalEnv, env);
+}
+
 function getEnv(name: string): string | undefined {
     const globalEnv = (globalThis as any)?.env;
     return process.env[name] || globalEnv?.[name] || (globalThis as any)?.[name];
 }
 
-const googleClientId = getEnv("GOOGLE_CLIENT_ID");
-const googleClientSecret = getEnv("GOOGLE_CLIENT_SECRET");
+function buildProviders() {
+    const googleClientId = getEnv("GOOGLE_CLIENT_ID");
+    const googleClientSecret = getEnv("GOOGLE_CLIENT_SECRET");
 
-const providers = [
-    ...(googleClientId && googleClientSecret
-        ? [
-            GoogleProvider({
-                clientId: googleClientId,
-                clientSecret: googleClientSecret,
-            }),
-        ]
-        : []),
-    CredentialsProvider({
-        id: "telegram-login",
-        name: "Telegram",
-        credentials: {
-            id: { label: "ID", type: "text" },
-            first_name: { label: "First Name", type: "text" },
-            last_name: { label: "Last Name", type: "text" },
-            username: { label: "Username", type: "text" },
-            photo_url: { label: "Photo URL", type: "text" },
-            auth_date: { label: "Auth Date", type: "text" },
-            hash: { label: "Hash", type: "text" },
-        },
-        async authorize(credentials) {
-            if (!credentials) return null;
+    return [
+        ...(googleClientId && googleClientSecret
+            ? [
+                GoogleProvider({
+                    clientId: googleClientId,
+                    clientSecret: googleClientSecret,
+                }),
+            ]
+            : []),
+        CredentialsProvider({
+            id: "telegram-login",
+            name: "Telegram",
+            credentials: {
+                id: { label: "ID", type: "text" },
+                first_name: { label: "First Name", type: "text" },
+                last_name: { label: "Last Name", type: "text" },
+                username: { label: "Username", type: "text" },
+                photo_url: { label: "Photo URL", type: "text" },
+                auth_date: { label: "Auth Date", type: "text" },
+                hash: { label: "Hash", type: "text" },
+            },
+            async authorize(credentials) {
+                if (!credentials) return null;
 
-            // Verify Telegram data
-            const isValid = verifyTelegramWebAppData(
-                credentials as any,
-                getEnv("TELEGRAM_BOT_TOKEN") || getEnv("TELEGRAM_BOT_TOKEN_2") || ""
-            );
+                // Verify Telegram data
+                const isValid = verifyTelegramWebAppData(
+                    credentials as any,
+                    getEnv("TELEGRAM_BOT_TOKEN") || getEnv("TELEGRAM_BOT_TOKEN_2") || ""
+                );
 
-            if (!isValid) {
-                throw new Error("Invalid Telegram hash");
-            }
-
-            // Check for staleness (optional, e.g. 24 hours)
-            const now = Math.floor(Date.now() / 1000);
-            if (now - parseInt(credentials.auth_date) > 86400) {
-                throw new Error("Data is outdated");
-            }
-
-            await dbConnect();
-
-            // Find or create user
-            let user = await User.findOne({ telegramId: credentials.id });
-            if (!user) {
-                // CHECK SIGNUP SETTING
-                const { default: Setting } = await import("@/models/Setting");
-                const signupSetting = await Setting.findOne({ key: 'signupsEnabled' });
-
-                if (signupSetting && signupSetting.value === false) {
-                    throw new Error("Signups are currently disabled.");
+                if (!isValid) {
+                    throw new Error("Invalid Telegram hash");
                 }
 
-                user = await User.create({
-                    telegramId: credentials.id,
-                    username: credentials.username || `user_${credentials.id}`,
-                    // We might not get email from Telegram
-                    avatar: credentials.photo_url,
-                    plan: 'free',
-                });
-            } else {
-                user.lastLogin = new Date();
-                await user.save();
-            }
+                // Check for staleness (optional, e.g. 24 hours)
+                const now = Math.floor(Date.now() / 1000);
+                if (now - parseInt(credentials.auth_date) > 86400) {
+                    throw new Error("Data is outdated");
+                }
 
-            return {
-                id: user._id.toString(),
-                name: user.username,
-                image: user.avatar,
-                email: user.email, // might be undefined
-                role: user.role,
-                plan: user.plan
-            };
-        },
-    }),
-];
+                await dbConnect();
 
-export const authOptions: NextAuthOptions = {
-    providers,
+                // Find or create user
+                let user = await User.findOne({ telegramId: credentials.id });
+                if (!user) {
+                    // CHECK SIGNUP SETTING
+                    const { default: Setting } = await import("@/models/Setting");
+                    const signupSetting = await Setting.findOne({ key: 'signupsEnabled' });
+
+                    if (signupSetting && signupSetting.value === false) {
+                        throw new Error("Signups are currently disabled.");
+                    }
+
+                    user = await User.create({
+                        telegramId: credentials.id,
+                        username: credentials.username || `user_${credentials.id}`,
+                        // We might not get email from Telegram
+                        avatar: credentials.photo_url,
+                        plan: 'free',
+                    });
+                } else {
+                    user.lastLogin = new Date();
+                    await user.save();
+                }
+
+                return {
+                    id: user._id.toString(),
+                    name: user.username,
+                    image: user.avatar,
+                    email: user.email, // might be undefined
+                    role: user.role,
+                    plan: user.plan
+                };
+            },
+        }),
+    ];
+}
+
+function resolveAuthSecret() {
+    return (
+        getEnv("NEXTAUTH_SECRET") ||
+        getEnv("AUTH_SECRET") ||
+        getEnv("TELEGRAM_BOT_TOKEN") ||
+        getEnv("TELEGRAM_BOT_TOKEN_2") ||
+        "temporary-auth-secret-change-me"
+    );
+}
+
+export function createAuthOptions(): NextAuthOptions {
+    return {
+        providers: buildProviders(),
     callbacks: {
         async signIn({ user, account, profile }) {
             if (account?.provider === "google") {
@@ -169,7 +190,28 @@ export const authOptions: NextAuthOptions = {
             // However, verifyAdmin() already checks DB, so this is mostly for UI.
 
             return token;
-        }
+        },
+        async redirect({ url, baseUrl }) {
+            const dashboardUrl = `${baseUrl}/dashboard`;
+
+            if (url.startsWith("/")) {
+                const absoluteUrl = `${baseUrl}${url}`;
+                if (absoluteUrl.startsWith(`${baseUrl}/login`)) return dashboardUrl;
+                return absoluteUrl;
+            }
+
+            try {
+                const parsedUrl = new URL(url);
+                if (parsedUrl.origin === baseUrl) {
+                    if (parsedUrl.pathname === "/login") return dashboardUrl;
+                    return url;
+                }
+            } catch {
+                return dashboardUrl;
+            }
+
+            return dashboardUrl;
+        },
     },
     pages: {
         signIn: '/login',
@@ -178,10 +220,8 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: "jwt",
     },
-    secret:
-        getEnv("NEXTAUTH_SECRET") ||
-        getEnv("AUTH_SECRET") ||
-        getEnv("TELEGRAM_BOT_TOKEN") ||
-        getEnv("TELEGRAM_BOT_TOKEN_2") ||
-        "temporary-auth-secret-change-me",
-};
+        secret: resolveAuthSecret(),
+    };
+}
+
+export const authOptions: NextAuthOptions = createAuthOptions();
