@@ -55,7 +55,7 @@ export const PricingSection = () => {
                                     ))}
                                 </ul>
 
-                                <Link href="/login">
+                                <Link href="/dashboard">
                                     <Button
                                         variant={isMostPopular ? 'primary' : 'outline'}
                                         className={`w-full ${isMostPopular ? 'bg-white text-black hover:bg-gray-200' : 'text-[#72767a] hover:text-white'}`}

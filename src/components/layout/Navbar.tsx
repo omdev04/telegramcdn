@@ -70,10 +70,10 @@ export const Navbar = () => {
                         </>
                     ) : (
                         <>
-                            <Link href="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                            <Link href="/dashboard" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
                                 Log in
                             </Link>
-                            <Link href="/login">
+                            <Link href="/dashboard">
                                 <Button size="sm" className="bg-white text-black hover:bg-gray-200 rounded-full px-6 font-medium">
                                     Get Started
                                 </Button>
@@ -143,8 +143,8 @@ export const Navbar = () => {
                             </>
                         ) : (
                             <>
-                                <Link href="/login" className="text-center text-white bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-all font-medium" onClick={() => setIsOpen(false)}>Log in</Link>
-                                <Link href="/login" className="text-center" onClick={() => setIsOpen(false)}>
+                                <Link href="/dashboard" className="text-center text-white bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-all font-medium" onClick={() => setIsOpen(false)}>Log in</Link>
+                                <Link href="/dashboard" className="text-center" onClick={() => setIsOpen(false)}>
                                     <Button className="w-full bg-white text-black hover:bg-gray-200 rounded-xl">Get Started</Button>
                                 </Link>
                             </>
